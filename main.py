@@ -241,6 +241,7 @@ async def on_voice_state_update(member: discord.Member, bef: discord.VoiceState,
         try: sesh = AUDIO_SESSIONS[member.guild.id]
         except: sesh = None
         if sesh is not None:
+            # u.tokens.determine_tokens_gained_voice(sesh=sesh, voicetime=u.user_voicetime)
             await sesh.stop()
     
     if not u.profile.feature_enabled('TRACK_VOICETIME'): return
@@ -375,7 +376,6 @@ async def on_ready():
     global initial
     # await client.load_extension(f'MusicCog.MusicPlayer')
     await load_extensions_on_ready()
-    await client.load_extension(f'Leveling.LevelCog')
     await client.load_extension(f'Plex.PlexCog')
     set_async_client(client)
     if initial:

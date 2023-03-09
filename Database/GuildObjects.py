@@ -7,7 +7,7 @@ from Music.LavalinkClient import AUDIO_SESSIONS
 from Database.database_class import Database
 from Leveling.LevelClass import LevelClass
 # from Pets.PetClass import PetOwner
-# from Tokens.TokenClass import Token
+from Tokens.TokenClass import Token
 from Emojis.emoji_generator import get_emoji_url, get_guild_emoji
 from misc.embeds import help_embed
 from misc.holiday_roles import get_holiday
@@ -549,9 +549,9 @@ class MikoMember(MikoGuild):
         )
         if val == [] or val is None: return -1
         return int(val)
-    # @property
-    # def tokens(self) -> Token:
-    #     return Token(user=self.user, guild=self.guild)
+    @property
+    def tokens(self) -> Token:
+        return Token(u=self)
     @property
     def leveling(self) -> LevelClass:
         return LevelClass(u=self)
@@ -860,8 +860,8 @@ class MikoMessage():
         if not self.message.author.bot and self.channel.profile.feature_enabled('LEVELING'):
             lc = self.user.leveling
             await lc.determine_xp_gained_msg()
-            # tc = mm.user.tokens
-            # tc.determine_tokens_gained_msg()
+            tc = self.user.tokens
+            tc.determine_tokens_gained_msg()
     
     async def handle_persistent_player_reposition(self) -> None:
         # Persistent music player embed. Will delete the embed and re-send

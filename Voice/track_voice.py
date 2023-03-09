@@ -1,3 +1,4 @@
+import asyncio
 import time
 import discord
 from Database.database_class import Database
@@ -228,7 +229,6 @@ async def process_voice_state(u: MikoMember, bef: discord.VoiceState, cur: disco
         if sesh[0] is not None: stop()
         key = determine_htable_key(map=VOICE_SESSIONS, key=u.user.id)
         VOICE_SESSIONS[key] = VoiceActivity(u=u)
-        await VOICE_SESSIONS[key].heartbeat()
 
     async def check_tracking():
         sesh = locate_htable_obj(map=VOICE_SESSIONS,

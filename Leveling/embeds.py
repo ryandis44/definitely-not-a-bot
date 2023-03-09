@@ -23,7 +23,6 @@ def leveling_stats(u: MikoMember) -> discord.Embed:
         color = GLOBAL_EMBED_COLOR,
         description=f"{''.join(temp)}"
     )
-    nick_ctx = u.nickname_in_ctx
     embed.set_thumbnail(url=u.user_avatar)
     embed.set_author(name=f"{u.username} Leveling Stats", icon_url=role.display_icon)
     return embed

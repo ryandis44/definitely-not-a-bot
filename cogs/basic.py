@@ -176,29 +176,35 @@ class Basic(commands.Cog):
         #await ctx.channel.send(f"{await g.emoji}")
         #ch = MikoTextChannel(channel=ctx.channel, client=self.client)
         u = MikoMember(user=user, client=self.client)
-        guild = ctx.guild
         await ctx.send(
-            content=(
-                "I joined a new guild!\n"
-                f"> Added at: <t:{int(time.time())}:R>\n"
-                f"> Guild name: **{guild.name}** [`{guild.id}`]\n"
-                f"> Guild owner: {guild.owner.mention} [`{guild.owner.id}`]\n"
-                f"> Guild members: `{guild.member_count}`\n"
-                f"> Guild profile [DB]: `{u.status}`\n"
-                f"> Guild Locale (Region): `{guild.preferred_locale}`\n"
-                f"> Guild 2FA Level: `{guild.mfa_level}`\n"
-                f"> Guild NSFW Level: `{guild.nsfw_level}`\n"
-                f"> Guild Nitro boost level: `{guild.premium_tier}`\n"
-                f"> Guild Nitro boost count: `{guild.premium_subscription_count}`\n"
-                f"> Guild Text Channels: `{len(guild.text_channels) if guild.text_channels is not None else 0}`\n"
-                f"> Guild Voice Channels: `{len(guild.voice_channels) if guild.voice_channels is not None else 0}`\n"
-                f"> Guild Vanity URL: {guild.vanity_url} | `{guild.vanity_url_code}`\n"
-                f"> Guild Icon: {guild.icon}\n"
-                f"> Guild Banner: {guild.banner}\n"
-                f"> My permissions: `{guild.me.guild_permissions}`\n"
-            ),
-            allowed_mentions=discord.AllowedMentions(users=False)
+            f"{time_elapsed(u.user_voicetime, 'h')}"
         )
+        # await ctx.send(
+        #     f"{asyncio.all_tasks()}"
+        # )
+        # guild = ctx.guild
+        # await ctx.send(
+        #     content=(
+        #         "I joined a new guild!\n"
+        #         f"> Added at: <t:{int(time.time())}:R>\n"
+        #         f"> Guild name: **{guild.name}** [`{guild.id}`]\n"
+        #         f"> Guild owner: {guild.owner.mention} [`{guild.owner.id}`]\n"
+        #         f"> Guild members: `{guild.member_count}`\n"
+        #         f"> Guild profile [DB]: `{u.status}`\n"
+        #         f"> Guild Locale (Region): `{guild.preferred_locale}`\n"
+        #         f"> Guild 2FA Level: `{guild.mfa_level}`\n"
+        #         f"> Guild NSFW Level: `{guild.nsfw_level}`\n"
+        #         f"> Guild Nitro boost level: `{guild.premium_tier}`\n"
+        #         f"> Guild Nitro boost count: `{guild.premium_subscription_count}`\n"
+        #         f"> Guild Text Channels: `{len(guild.text_channels) if guild.text_channels is not None else 0}`\n"
+        #         f"> Guild Voice Channels: `{len(guild.voice_channels) if guild.voice_channels is not None else 0}`\n"
+        #         f"> Guild Vanity URL: {guild.vanity_url} | `{guild.vanity_url_code}`\n"
+        #         f"> Guild Icon: {guild.icon}\n"
+        #         f"> Guild Banner: {guild.banner}\n"
+        #         f"> My permissions: `{guild.me.guild_permissions}`\n"
+        #     ),
+        #     allowed_mentions=discord.AllowedMentions(users=False)
+        # )
         # await ctx.channel.send(f"{u.profile} {u.profile.cmd_enabled('PLAYTIME')}")
         # await ctx.channel.send(f"{(7150 % tunables('THRESHOLD_VOICETIME_FOR_TOKEN')) >= tunables('THRESHOLD_VOICETIME_FOR_TOKEN') - 30} ({tunables('THRESHOLD_VOICETIME_FOR_TOKEN')}) | {u.user_voicetime}")
         #await ctx.channel.send(

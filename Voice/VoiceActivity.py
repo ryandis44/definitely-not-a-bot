@@ -18,8 +18,10 @@ If an activity is resumed, we will set the end_time value in the database back t
 just as it is when an activity is new and has not yet concluded for the first time.
 '''
 
+import asyncio
 import discord
 from Database.database_class import Database
+from misc.misc import time_elapsed
 from tunables import *
 import time
 
@@ -29,6 +31,7 @@ va = Database("Voice.VoiceActivity.py")
 class VoiceActivity():
     
     def __init__(self, u, start_time=None):
+        self.u = u
         self.__member: discord.Member = u.user
         if start_time is None:
             self.__start_time = int(time.time())
@@ -37,10 +40,14 @@ class VoiceActivity():
             self.__start_time = start_time
             self.__resume_threshold = self.__start_time - tunables('THRESHOLD_RESUME_REBOOT_VOICE_ACTIVITY')
         self.__guild: discord.Guild = u.guild
+        self.resume_time = 0
+        self.__stored_voicetime: int = u.user_voicetime
         self.__new_voice_entry()
         self.last_xp_award = -1
         self.last_token_award = -1
         self.active = True
+        # if u.profile.
+        asyncio.create_task(self.heartbeat())
     
     @property
     def comparable(self) -> int:
@@ -74,7 +81,7 @@ class VoiceActivity():
             "LIMIT 1"
         )
         val = va.db_executor(sel_cmd)
-        
+
         # If no voice activity was found
         if val == []:
             ins_cmd = (
@@ -88,9 +95,11 @@ class VoiceActivity():
         # threshold—in this case, x minutes—
         # resume the activity.
         elif int(val[0][0]) >= self.__resume_threshold:
+            self.resume_time = int(time.time())
             self.__start_time = int(val[0][1])
             upd_cmd = (
-                "UPDATE VOICE_HISTORY SET end_time=NULL WHERE "
+                "UPDATE VOICE_HISTORY SET end_time=NULL,"
+                f"resume_time='{self.resume_time}' WHERE "
                 f"user_id='{self.__member.id}' "
                 f"AND server_id='{self.__guild.id}' "
                 f"AND start_time='{self.__start_time}'"
@@ -123,4 +132,52 @@ class VoiceActivity():
         self.__end_session()
     
     
-    def __end_session(self): del self
+    def __end_session(self):
+        self.active = False
+        del self
+    
+    async def heartbeat(self) -> None:
+        
+        voicetime = self.__stored_voicetime - self.time_elapsed
+        # Determine the modulo of the stored voicetime so we can use it as reference
+        # if a user resumes their voicetime entry.
+        prev_tok = voicetime % tunables('THRESHOLD_VOICETIME_FOR_TOKEN')
+        prev_xp = voicetime % tunables('THRESHOLD_VOICETIME_FOR_XP')
+        
+        while self.active:
+
+            await asyncio.sleep(1)
+            combined = voicetime + self.time_elapsed
+            current_tok = combined % tunables('THRESHOLD_VOICETIME_FOR_TOKEN')
+            current_xp = combined % tunables('THRESHOLD_VOICETIME_FOR_XP')
+            # print(
+            #     f"Stored voicetime: {time_elapsed(voicetime, 'h')} | "
+            #     f"Cached voicetime: {self.time_elapsed} | "
+            #     f"Combined voicetime: {voicetime + self.time_elapsed} % T:{current_tok} |  XP:{current_xp} | "
+            #     f"prev_tok == {prev_tok} current_tok == {current_tok} | "
+            #     f"resume_time == {self.resume_time} | start_time == {self.__start_time} | rt - st == {self.resume_time - self.__start_time}"
+            #     f"prev_xp == {prev_xp} current_xp == {current_xp}"
+            # )
+            
+            # If prev >= current, that means we have hit the 2h mark and the modulo
+            # has reset back to zero.
+            if (self.resume_time - self.start_time) > tunables('THRESHOLD_LIST_VOICE_ACTIVITY') or self.resume_time == 0:
+                if prev_tok > current_tok:
+                    # print(f"2h found? prev == {prev_tok} current == {current_tok}")
+                    self.u.tokens.add_tokens(tunables('TOKENS_GAINED_FROM_VOICETIME'))
+                    # print(f"{tunables('TOKENS_GAINED_FROM_VOICETIME')} token added to {self.member}")
+                
+                if prev_xp > current_xp:
+                    # print(f"4 min found? prev_xp == {prev_xp} current == {current_xp}")
+                    await self.u.leveling.add_xp_voice(tunables('XP_GAINED_FROM_VOICETIME'))
+                    # print(f"{tunables('XP_GAINED_FROM_VOICETIME')} xp added to {self.member}")
+            else:
+                self.resume_time += 1
+                # print(
+                #     f"Cancelling token/xp award. Entry is less than '{tunables('THRESHOLD_LIST_VOICE_ACTIVITY')}' seconds: "
+                #     f"resume_time == {self.resume_time - 90} | start_time == {self.__start_time}"
+                # )
+            
+            prev_tok = combined % tunables('THRESHOLD_VOICETIME_FOR_TOKEN')
+            prev_xp = combined % tunables('THRESHOLD_VOICETIME_FOR_XP')
+        return

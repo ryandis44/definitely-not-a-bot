@@ -65,7 +65,9 @@ class LevelClass:
         await self.add_xp_msg(tunables('XP_GAINED_FROM_MESSAGES'))
     
     async def determine_xp_gained_voice(self, sesh: VoiceActivity) -> None:
-        if sesh.time_elapsed >= tunables('THRESHOLD_VOICETIME_FOR_XP') and sesh.time_elapsed % tunables('THRESHOLD_VOICETIME_FOR_XP') <= 90 and sesh.last_xp_award <= int(time.time() - 90):
+        if sesh.time_elapsed >= tunables('THRESHOLD_VOICETIME_FOR_XP') and\
+            sesh.time_elapsed % tunables('THRESHOLD_VOICETIME_FOR_XP') <= 90\
+                and sesh.last_xp_award <= int(time.time() - 90):
             await self.add_xp_voice(tunables('XP_GAINED_FROM_VOICETIME'))
             sesh.last_xp_award = int(time.time())
     
@@ -82,6 +84,7 @@ class LevelClass:
         if self.level > lv and not manual: await self.__assign_role()
     
     async def __assign_role(self) -> None:
+        if self.u.client.user.id != 1017998983886545068: return
         role = self.get_role()
         leveling_roles = [
             self.guild.get_role(tunables('RANK_ID_LEVEL_01')),
