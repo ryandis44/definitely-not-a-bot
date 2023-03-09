@@ -1,4 +1,4 @@
-# miko
+# Definitely not source code for Miko
 
-# contributors
+# Contributors
 @ryandis44
