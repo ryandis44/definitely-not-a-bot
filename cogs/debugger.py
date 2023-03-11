@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 import discord
 from discord.ext import commands
@@ -16,7 +17,7 @@ from Polls.UI import active_polls
 from Music.LavalinkClient import AUDIO_SESSIONS
 load_dotenv()
 
-dbg = Database("debugger.py")
+dbg = Database("cogs.debugger.py")
 
 class Debugger(commands.Cog):
     def __init__(self, client):
@@ -37,7 +38,7 @@ class Debugger(commands.Cog):
                 f"Please provide something to debug: `{os.getenv('CMD_PREFIX1')}d <category> (user)`\n"
                 "Categories: `a` (activity), `gl` (guild list), "
                 "`as` (active playtime sessions), `av` (active voice sessions), `po` (active polls) "
-                "`music` (active music sessions)"
+                "`music` (active music sessions), `tasks` (all active asyncio tasks)"
             )
             return
         
@@ -168,6 +169,13 @@ class Debugger(commands.Cog):
                     temp.append(f"> Message ID: `{sesh.message}`\n")
                     temp.append(f"> Stopping?: `{sesh.stopping}`")
                 await ctx.channel.send(''.join(temp))
+
+            case 'tasks':
+
+                temp = []
+                seshs = AUDIO_SESSIONS.items()
+                print(f"DEBUG REQUESTED 'music': {asyncio.all_tasks()}")
+                await ctx.channel.send(content=f"{asyncio.all_tasks()}")
 
 
 

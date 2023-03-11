@@ -204,7 +204,12 @@ async def on_raw_member_remove(payload: discord.RawMemberRemoveEvent):
 async def on_member_update(before: discord.Member, cur: discord.Member):
     if not running: return
     u = MikoMember(user=cur, client=client)
-    if not u.profile.feature_enabled('GREET_NEW_MEMBERS'): return
+    await asyncio.sleep(1)
+    if u.greeting_task is not None:
+        if not u.greeting_task.done():
+            print(f"\nGreeting task not complete. Forcing completion... ({cur}) ({cur.guild})")
+            await u.greeting_task
+            print(f"**Greeting task status: {'COMPLETE' if u.greeting_task.done() else 'INCOMPLETE'}**\n")
 
     username_hist(cur)
 
@@ -344,6 +349,7 @@ async def on_message(message: discord.Message):
                 silent=True
             )
 
+    return
 
 
 async def load_extensions():

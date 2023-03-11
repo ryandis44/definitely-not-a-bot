@@ -147,7 +147,7 @@ class BookView(discord.ui.View):
             f"Age: **{p.age}**\n"
             # f"DOB: "
             f"Wristband Level: {p.wristband_emoji} **{p.wristband}**\n"
-            f"Passed: __{p.pass_time_formatted}__\n"
+            f"Entered: __{p.pass_time_formatted}__\n"
             f"By: {p.creator_id_mention}\n"
             f"EID: `{p.eid}`\n"
         )

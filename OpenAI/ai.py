@@ -1,3 +1,4 @@
+import asyncio
 import openai
 import discord
 import re
@@ -28,7 +29,8 @@ class MikoGPT:
             return
     
         try:
-            self.__openai_interaction()
+            block = asyncio.to_thread(self.__openai_interaction)
+            await block
 
             if len(self.response['data']) >= 750 or self.response['type'] == "IMAGE":
                 embed = self.__embed()
@@ -68,13 +70,13 @@ class MikoGPT:
                 # Mention does not have to be first word
                 self.prompt.pop(i)
         
-        if re.search('s:', self.prompt[0]):
-            if self.prompt[0] == "s:":
+        if re.search('s:', self.prompt[0].lower()):
+            if self.prompt[0].lower() == "s:":
                 self.prompt.pop(0)
             else:
                 self.prompt[0] = self.prompt[0][2:]
             self.response['type'] = "SERIOUS"
-        if re.search('i:', self.prompt[0]):
+        if re.search('i:', self.prompt[0].lower()):
             if self.prompt[0] == "i:":
                 self.prompt.pop(0)
             else:
@@ -86,7 +88,7 @@ class MikoGPT:
 
         if self.response['type'] != "IMAGE":
             
-            role = "You are a helpful and knowledgeable assistant."
+            role = tunables('OPENAI_RESPONSE_ROLE_DEFAULT')
             match self.response['type']:
                 case 'SERIOUS' | 'IMAGE':
                     role = tunables('OPENAI_RESPONSE_ROLE_DEFAULT')
