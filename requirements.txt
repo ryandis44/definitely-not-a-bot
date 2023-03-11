@@ -10,3 +10,4 @@ lavalink==4.0.3
 Pillow==9.3.0
 pyarr==3.1.3
 openai==0.27.1
+aiomysql==0.1.1
