@@ -644,7 +644,7 @@ class MikoMember(MikoGuild):
 
             case "THEBOYS":
 
-                if self.client.user.id == 1017998983886545068: return # Only send welcome messages/role assignments if prod miko
+                if self.client.user.id != 1017998983886545068: return # Only send welcome messages/role assignments if prod miko
                 channel = self.guild.system_channel
                 if channel is not None:
                     await asyncio.sleep(1) # To ensure welcome message is sent after join message
