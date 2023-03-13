@@ -401,8 +401,8 @@ class SearchButton(discord.ui.Button):
                 max_length=tunables('GREEN_BOOK_MAX_SEARCH_LENGTH')
             )
         async def on_submit(self, interaction: discord.Interaction) -> None:
-            await interaction.response.edit_message()
             await self.bview.respond_modal_search(modal=self)
+            await interaction.response.edit_message()
 
 
 class BackToMainButton(discord.ui.Button):
@@ -418,8 +418,8 @@ class BackToMainButton(discord.ui.Button):
         self.bview = bview
     
     async def callback(self, interaction: discord.Interaction) -> None:
-        await interaction.response.edit_message()
         await self.bview.respond()
+        await interaction.response.edit_message()
 
 
 def check_modal_error(modal) -> dict:
@@ -461,11 +461,11 @@ async def on_modal_submit(modal, interaction: discord.Interaction, p: Person=Non
     e = check_modal_error(modal=modal)
     if e['age'] or e['wristband']: raise Exception
 
+    if p is None: await modal.bview.respond_detailed_entry(t='NEW', modal=modal)
+    else: await modal.bview.respond_detailed_entry(t='EDIT', modal=modal, p=p)
     # Message gets deleted during error handling; except and pass
     try: await interaction.response.edit_message()
     except: pass
-    if p is None: await modal.bview.respond_detailed_entry(t='NEW', modal=modal)
-    else: await modal.bview.respond_detailed_entry(t='EDIT', modal=modal, p=p)
 
 async def on_modal_error(modal, error_interaction: discord.Interaction):
         e = check_modal_error(modal=modal)
@@ -656,9 +656,9 @@ class SelectEntries(discord.ui.Select):
         )
     
     async def callback(self, interaction: discord.Interaction):
-        await interaction.response.edit_message()
         p = self.res[int(self.values[0])]
         await self.bview.respond_select_person(p=p)
+        await interaction.response.edit_message()
 
 class DeleteEntry(discord.ui.Button):
     def __init__(self, bview: BookView, p: Person):
@@ -673,8 +673,8 @@ class DeleteEntry(discord.ui.Button):
         self.p = p
 
     async def callback(self, interaction: discord.Interaction) -> None:
-        await interaction.response.edit_message()
         await self.bview.respond_detailed_entry(t='DELETE_WARN', p=self.p)
+        await interaction.response.edit_message()
 
 class DeleteCancel(discord.ui.Button):
     def __init__(self, bview: BookView, p: Person):
@@ -689,8 +689,8 @@ class DeleteCancel(discord.ui.Button):
         self.p = p
 
     async def callback(self, interaction: discord.Interaction) -> None:
-        await interaction.response.edit_message()
         await self.bview.respond_detailed_entry(t='DELETE_CANCEL', p=self.p)
+        await interaction.response.edit_message()
 
 class DeleteConfirm(discord.ui.Button):
     def __init__(self, bview: BookView, p: Person):
@@ -705,8 +705,8 @@ class DeleteConfirm(discord.ui.Button):
         self.p = p
 
     async def callback(self, interaction: discord.Interaction) -> None:
-        await interaction.response.edit_message()
         await self.bview.respond_detailed_entry(t='DELETE_CONFIRM', p=self.p)
+        await interaction.response.edit_message()
 
 
 class LogChannelButton(discord.ui.Button):
@@ -721,8 +721,8 @@ class LogChannelButton(discord.ui.Button):
         self.bview = bview
 
     async def callback(self, interaction: discord.Interaction) -> None:
-        await interaction.response.edit_message()
         await self.bview.respond_log_channel(t='DEFAULT')
+        await interaction.response.edit_message()
 
 
 
@@ -755,8 +755,8 @@ class UseChannelIDButton(discord.ui.Button):
         async def on_submit(self, interaction: discord.Interaction) -> None:
             e = check_modal_error(modal=self)
             if e['type'] or e['len'] or e['channel'] is None: raise Exception
-            await interaction.response.edit_message()
             await self.bview.respond_log_channel(t='SET', channel=e['channel'])
+            await interaction.response.edit_message()
         
         async def on_error(self, interaction: discord.Interaction, error) -> None:
             e = check_modal_error(modal=self)
@@ -791,8 +791,8 @@ class SelectLogChannel(discord.ui.ChannelSelect):
         ch: discord.app_commands.AppCommandChannel = self.values[0]
         try: ch = await ch.fetch()
         except: pass
-        await interaction.response.edit_message()
         await self.bview.respond_log_channel(t='SET', channel=ch)
+        await interaction.response.edit_message()
 
 
 class DeselectChannel(discord.ui.Button):
@@ -808,5 +808,5 @@ class DeselectChannel(discord.ui.Button):
         self.bview = bview
 
     async def callback(self, interaction: discord.Interaction) -> None:
-        await interaction.response.edit_message()
         await self.bview.respond_log_channel(t='DESELECT')
+        await interaction.response.edit_message()
