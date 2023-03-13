@@ -4,8 +4,8 @@ import discord
 from tunables import *
 from GreenBook.Objects import GreenBook, Person
 from Database.GuildObjects import MikoMember
-from Database.database_class import Database
-db = Database("GreenBook.UI.py")
+from Database.database_class import AsyncDatabase
+db = AsyncDatabase("GreenBook.UI.py")
 
         
 
@@ -16,8 +16,10 @@ class BookView(discord.ui.View):
         self.original_interaction = original_interaction
         self.u = MikoMember(user=original_interaction.user, client=original_interaction.client, check_exists=False)
         self.book = GreenBook(self.u)
-        asyncio.create_task(self.respond(init=True))
-    
+
+    async def ainit(self):
+        await self.respond(init=True)    
+
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         return interaction.user.id == self.u.user.id
 
@@ -29,9 +31,9 @@ class BookView(discord.ui.View):
     
     # /book and back button response
     async def respond(self, init=False) -> None:
-        res = self.book.recent_entries
+        res = await self.book.recent_entries
         res_len = len(res)
-        def __default_embed() -> discord.Embed:
+        async def __default_embed() -> discord.Embed:
             temp = []
 
             temp.append(
@@ -43,7 +45,7 @@ class BookView(discord.ui.View):
                 "in the green book.\n\n"
             )
 
-            total_entries = self.book.total_entries
+            total_entries = await self.book.total_entries
             if res_len > 0: temp.append("__Recent entries__ `[Last Name, First Name]`:")
             else: temp.append("There are no entries in this book. Add one by pressing the  `New Entry`  button.")
             for result in res:
@@ -64,18 +66,20 @@ class BookView(discord.ui.View):
         if res_len > 0: self.add_item(SelectEntries(bview=self, res=res))
         self.add_item(NewEntry(bview=self))
         self.add_item(SearchButton(bview=self))
+        if self.u.user.guild_permissions.manage_guild:
+            self.add_item(LogChannelButton(bview=self))
         # if admin, add more stuff self.add_item(admin)
 
         if init: self.msg = await self.original_interaction.original_response()
         await self.msg.edit(
             content=None,
-            embed=__default_embed(),
+            embed=await __default_embed(),
             view=self
         )
 
     # Response after completing search modal
     async def respond_modal_search(self, modal) -> None:
-        res = self.book.search(query=modal.name.value)
+        res = await self.book.search(query=modal.name.value)
         cnt = len(res)
         if cnt == 1:
             await self.respond_select_person(p=res[0])
@@ -102,7 +106,7 @@ class BookView(discord.ui.View):
         b.row = 2
         self.add_item(b)
         if cnt > 0: self.add_item(SelectEntries(bview=self, res=res))
-        else: self.add_item(SearchButton(bview=self))
+        self.add_item(SearchButton(bview=self))
 
         await self.msg.edit(
             content=None,
@@ -113,9 +117,9 @@ class BookView(discord.ui.View):
 
     # Response after choosing someone from the dropdown
     async def respond_select_person(self, p: Person) -> None:
-        def __selected_person_embed() -> discord.Embed:
+        async def __selected_person_embed() -> discord.Embed:
             embed = discord.Embed(
-                description=''.join(self.__detailed_entry_embed_description(p=p)),
+                description=''.join(await self.__detailed_entry_embed_description(p=p)),
                 color=GREEN_BOOK_NEUTRAL_COLOR
             )
             embed.set_author(
@@ -131,12 +135,12 @@ class BookView(discord.ui.View):
 
         await self.msg.edit(
             content=None,
-            embed=__selected_person_embed(),
+            embed=await __selected_person_embed(),
             view=self
         )
 
     # Description for full entry info
-    def __detailed_entry_embed_description(self, p: Person, history=True) -> list:
+    async def __detailed_entry_embed_description(self, p: Person, history=True) -> list:
         temp = []
         
         temp.append(
@@ -152,7 +156,7 @@ class BookView(discord.ui.View):
             f"EID: `{p.eid}`\n"
         )
 
-        hist = p.history
+        hist = await p.history
         hist_len = len(hist)
         if hist_len == 0 and history:
             temp.append("\nThis entry has not been updated since its creation.")
@@ -166,7 +170,7 @@ class BookView(discord.ui.View):
         
         return temp
 
-
+    # Response for selecting individual user
     async def respond_detailed_entry(self, t: str, p: Person=None, modal=None) -> None:
         desc = []
 
@@ -175,7 +179,7 @@ class BookView(discord.ui.View):
         match t:
             
             case 'EDIT':
-                if p.edit(modal=modal, modifier=self.u.user):
+                if await p.edit(modal=modal, modifier=self.u.user):
                     desc.append(
                         f":white_check_mark: __**Success! The entry for  `{p.last}, {p.first}`  has been updated.**__"
                     )
@@ -187,7 +191,7 @@ class BookView(discord.ui.View):
                 if wristband.upper() == "Y": wristband = "YELLOW"
                 elif wristband.upper() == "R": wristband = "RED"
                 else: wristband = "GREEN"
-                p: Person = self.book.create(
+                p: Person = await self.book.create(
                     first=modal.first.value,
                     last=modal.last.value,
                     age=modal.age.value,
@@ -218,7 +222,7 @@ class BookView(discord.ui.View):
                     f":white_check_mark: __**Success!  `{p.last}, {p.first}`  has been removed from the Green Book.**__"
                 )
                 color = GREEN_BOOK_SUCCESS_COLOR
-                p.delete()
+                await p.delete()
                 self.u.increment_statistic('YMCA_GREEN_BOOK_ENTRIES_DELETED')
             
             case 'DELETE_CANCEL':
@@ -234,7 +238,7 @@ class BookView(discord.ui.View):
 
         if t not in ['DELETE_CONFIRM']:
             desc.append("\n\n")
-            desc.append(''.join(self.__detailed_entry_embed_description(p=p, history=history)))
+            desc.append(''.join(await self.__detailed_entry_embed_description(p=p, history=history)))
         embed = discord.Embed(description=''.join(desc), color=color)
         embed.set_author(icon_url=self.u.guild.icon, name=f"{self.u.guild} Green Book")
 
@@ -259,6 +263,115 @@ class BookView(discord.ui.View):
             view=self
         )
 
+
+    def __log_channel_description(self, log_channel: discord.TextChannel = None) -> list:
+        temp = []
+
+        if log_channel is not None:
+            log_channel = log_channel.mention
+        else: log_channel = "`None`"
+
+        temp.append(
+            f"__Current Log channel: {log_channel}\n\n__"
+        )
+
+        temp.append(
+            "Use the dropdown below to set the channel "
+            f"that {self.u.client.user.mention} will send new Green Book entries "
+            "to. Select `Deselect Channel` to remove current channel "
+            "(if any)."
+            "\n\n"
+            "**Note**: If your channel does not appear, it could be "
+            f"because {self.u.client.user.mention} does not have `Send Messages` and/or `View Channel` "
+            "permissions in that channel."
+            "\n\n"
+            "Press the `Use ID` "
+            "button to choose a channel by pasting in its channel ID. To get "
+            "a channel ID, type `#` in chat and begin typing its name. Select "
+            "it from the list of channels that pop up and then put a backslash "
+            "`\\` in front of it. It will give you something that looks like "
+            "`<#1084326524683038880>`. The ID is the numbers and the numbers only."
+        )
+
+        return temp
+
+    async def respond_log_channel(self, t: str, channel: discord.TextChannel = None) -> None:
+        desc = []
+
+        log_channel = await self.u.ymca_green_book_channel
+        # Embed setup
+        match t:
+            
+            case 'SET':
+                send_msg = False
+                read_msg = False
+                er = []
+                try:
+                    send_msg = channel.permissions_for(channel.guild.me).send_messages
+                    read_msg = channel.permissions_for(channel.guild.me).read_messages
+                except: pass
+                if not send_msg or not read_msg:
+                    if not send_msg: er.append('`Send Messages`')
+                    if not read_msg: er.append('`Read Messages`')
+                    desc.append(
+                        f"❗ **Error: Unable to set channel {channel.mention} as log channel. I do not "
+                        f"have {' or '.join(er)} "
+                        "permissions in that channel.**"
+                    )
+                    color = GREEN_BOOK_FAIL_COLOR
+                else:
+                    desc.append(
+                        f"✅ **Success! Set {channel.mention} as the Green Book log channel. "
+                        "To unset this channel, press the `Deselect Channel` button.**"
+                    )
+                    await db.execute(
+                        f"UPDATE SERVERS SET ymca_green_book_channel='{channel.id}' "
+                        f"WHERE server_id='{self.original_interaction.guild.id}'"
+                    )
+                    log_channel = channel
+                    color = GREEN_BOOK_SUCCESS_COLOR
+
+            case 'DESELECT':
+                if log_channel is not None:
+                    desc.append(
+                        f"✅ **Success! {log_channel.mention} will no longer receive "
+                        "Green Book log updates.**"
+                    )
+                    await db.execute(
+                        "UPDATE SERVERS SET ymca_green_book_channel=NULL WHERE "
+                        f"server_id='{self.original_interaction.guild.id}'"
+                    )
+                    log_channel = None
+                    color = GREEN_BOOK_SUCCESS_COLOR
+                else:
+                    desc.append(
+                        "⚠ Error: There is no active log channel."
+                    )
+                    color = GREEN_BOOK_WARN_COLOR
+                
+            case _:
+                color = GREEN_BOOK_NEUTRAL_COLOR
+
+        desc.append("\n\n")
+        desc.append(''.join(self.__log_channel_description(log_channel=log_channel)))
+        embed = discord.Embed(description=''.join(desc), color=color)
+        embed.set_author(icon_url=self.u.guild.icon, name=f"{self.u.guild} Green Book")
+
+        self.clear_items()
+        self.add_item(SelectLogChannel(bview=self))
+        b = BackToMainButton(bview=self)
+        b.row = 2
+        self.add_item(b)
+        self.add_item(UseChannelIDButton(bview=self))
+        d = DeselectChannel(bview=self)
+        if log_channel is not None: d.disabled=False
+        self.add_item(d)
+
+        await self.msg.edit(
+            content=None,
+            embed=embed,
+            view=self
+        )
 
 class SearchButton(discord.ui.Button):
 
@@ -312,17 +425,36 @@ class BackToMainButton(discord.ui.Button):
 def check_modal_error(modal) -> dict:
     e = {
         'age': False,
-        'wristband': False
+        'wristband': False,
+        'type': False,
+        'len': False,
+        'channel': None
     }
     try: int(modal.age.value)
     except: e['age'] = True
 
-    if not e['age']:
-        if int(modal.age.value) < 1 or int(modal.age.value) > 100: e['age'] = True
+    try: int(modal.chid.value)
+    except: e['type'] = True
 
-    if modal.wristband.value.upper() not in ['G', 'Y', 'R', '']:
-        e['wristband'] = True
-    
+    try:
+        if len(modal.chid.value) < 15: e['len'] = True
+    except: pass
+
+    try:
+        if not e['type'] and not e['len']:
+            e['channel'] = modal.bview.original_interaction.guild.get_channel(int(modal.chid.value))
+    except: pass
+
+    try:
+        if not e['age']:
+            if int(modal.age.value) < 1 or int(modal.age.value) > 100: e['age'] = True
+    except: pass
+
+    try:
+        if modal.wristband.value.upper() not in ['G', 'Y', 'R', '']:
+            e['wristband'] = True
+    except: pass
+
     return e
 
 async def on_modal_submit(modal, interaction: discord.Interaction, p: Person=None) -> None:
@@ -481,7 +613,6 @@ class ModalTryAgain(discord.ui.View):
         super().__init__(timeout=tunables('BOOK_VIEW_TIMEOUT'))
         self.calling_modal = calling_modal
         self.error_interaction = error_interaction
-        asyncio.create_task(self.__original_response())
 
     async def __original_response(self):
         try: self.original_response = await self.error_interaction.original_response()
@@ -491,6 +622,7 @@ class ModalTryAgain(discord.ui.View):
     async def try_again(self, interaction: discord.Interaction, button = discord.Button):
         await interaction.response.send_modal(self.calling_modal)
         self.stop()
+        await self.__original_response()
         try: await self.original_response.delete()
         except: pass
 
@@ -575,3 +707,106 @@ class DeleteConfirm(discord.ui.Button):
     async def callback(self, interaction: discord.Interaction) -> None:
         await interaction.response.edit_message()
         await self.bview.respond_detailed_entry(t='DELETE_CONFIRM', p=self.p)
+
+
+class LogChannelButton(discord.ui.Button):
+    def __init__(self, bview: BookView):
+        super().__init__(
+            style=discord.ButtonStyle.blurple,
+            label="Log Channel",
+            emoji=None,
+            custom_id="logc_button",
+            row=2
+        )
+        self.bview = bview
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        await interaction.response.edit_message()
+        await self.bview.respond_log_channel(t='DEFAULT')
+
+
+
+class UseChannelIDButton(discord.ui.Button):
+    def __init__(self, bview: BookView):
+        super().__init__(
+            style=discord.ButtonStyle.gray,
+            label="Use ID",
+            emoji=None,
+            custom_id="id_button",
+            row=2
+        )
+        self.bview = bview
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        await interaction.response.send_modal(self.ChannelIDModal(bview=self.bview))
+
+    class ChannelIDModal(discord.ui.Modal):
+
+        def __init__(self, bview: BookView):
+            super().__init__(title="Enter Channel ID", custom_id="channel_id_modal")
+            self.bview = bview
+
+        chid = discord.ui.TextInput(
+                label="Enter Channel ID:",
+                placeholder=f"1084326524683038880",
+                min_length=1,
+                max_length=30
+            )
+        async def on_submit(self, interaction: discord.Interaction) -> None:
+            e = check_modal_error(modal=self)
+            if e['type'] or e['len'] or e['channel'] is None: raise Exception
+            await interaction.response.edit_message()
+            await self.bview.respond_log_channel(t='SET', channel=e['channel'])
+        
+        async def on_error(self, interaction: discord.Interaction, error) -> None:
+            e = check_modal_error(modal=self)
+            temp = []
+            if e['type']: temp.append("`Channel ID` must be a number")
+            if e['len']: temp.append("`Channel ID` must be between 15 and 30 numbers in length.")
+            if not e['len'] and not e['type'] and e['channel'] is None:
+                temp.append(f"No channel in this server found with ID `{self.chid.value}`")
+
+            await interaction.response.send_message(
+                content="\n".join(temp),
+                ephemeral=True,
+                view=ModalTryAgain(calling_modal=self, error_interaction=interaction)
+            )
+
+
+class SelectLogChannel(discord.ui.ChannelSelect):
+    def __init__(self, bview: BookView):
+        self.bview = bview
+
+        super().__init__(
+            placeholder="Select a channel",
+            min_values=1,
+            max_values=1,
+            row=1,
+            custom_id="select_channel",
+            disabled=False,
+            channel_types=[discord.ChannelType.text]
+        )
+    
+    async def callback(self, interaction: discord.Interaction):
+        ch: discord.app_commands.AppCommandChannel = self.values[0]
+        try: ch = await ch.fetch()
+        except: pass
+        await interaction.response.edit_message()
+        await self.bview.respond_log_channel(t='SET', channel=ch)
+
+
+class DeselectChannel(discord.ui.Button):
+    def __init__(self, bview: BookView):
+        super().__init__(
+            style=discord.ButtonStyle.red,
+            label="Deselect Channel",
+            emoji=None,
+            custom_id="deselect_button",
+            row=2,
+            disabled=True
+        )
+        self.bview = bview
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        await interaction.response.edit_message()
+        await self.bview.respond_log_channel(t='DESELECT')

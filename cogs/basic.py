@@ -5,7 +5,7 @@ from discord.utils import get
 import random
 import time
 from Database.GuildObjects import MikoGuild, MikoMember, MikoTextChannel
-from Database.database_class import Database
+from Database.database_class import Database, AsyncDatabase
 from Plex.embeds import plex_update_2_2
 from Database.database import add_bot, add_react_all_to_user, add_react_to_user, add_rename_any_user, add_rename_to_user, del_bot, del_react_all_to_user, del_react_to_user, del_rename_any_user, del_rename_to_user, generic_list_embed, get_server_status, set_status_active, set_status_scraping, top_channels_embed_server, top_users_embed_server, user_info_embed
 from misc.holiday_roles import get_holiday
@@ -16,6 +16,7 @@ from discord.ext.commands import Context
 from tunables import *
 
 b = Database("basic.py")
+ab = AsyncDatabase("cogs.basic.py")
 
 running = 0
 
@@ -170,18 +171,18 @@ class Basic(commands.Cog):
         try: user = ctx.message.mentions[0]
         except: user = ctx.author
 
+
+        await ctx.channel.send(
+            content=str(await ab.execute(f"SELECT * FROM SERVERS WHERE server_id='{ctx.guild.id}'"))
+        )
+
+
         # await ctx.channel.send(f"{playtimeContentMessage()}")
 
         #g = MikoGuild(guild=ctx.guild, client=self.client)
         #await ctx.channel.send(f"{await g.emoji}")
         #ch = MikoTextChannel(channel=ctx.channel, client=self.client)
-        u = MikoMember(user=user, client=self.client)
-        await ctx.send(
-            f"{time_elapsed(u.user_voicetime, 'h')}"
-        )
-        # await ctx.send(
-        #     f"{asyncio.all_tasks()}"
-        # )
+        # u = MikoMember(user=user, client=self.client)
         # guild = ctx.guild
         # await ctx.send(
         #     content=(

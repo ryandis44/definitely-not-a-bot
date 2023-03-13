@@ -4,8 +4,8 @@ import uuid
 import discord
 from tunables import tunables
 from Database.GuildObjects import MikoMember
-from Database.database_class import Database
-db = Database("GreenBook.Objects.py")
+from Database.database_class import AsyncDatabase
+db = AsyncDatabase("GreenBook.Objects.py")
 
 
 class PersonUpdate:
@@ -59,7 +59,7 @@ class Person:
                 f"\u200b \u200b└→  Entered by {self.creator_id_mention} on {self.pass_time_formatted}\n"
     )
 
-    def edit(self, modal, modifier: discord.Member) -> bool:
+    async def edit(self, modal, modifier: discord.Member) -> bool:
         modified = {
             'first': False,
             'last': False,
@@ -107,7 +107,7 @@ class Person:
 
             before = str(modified[f"{key}_val"][0])
             after = str(modified[f"{key}_val"][1])
-            db.db_executor(
+            await db.execute(
                 "INSERT INTO YMCA_GREEN_BOOK_HISTORY (entry_id,user_id,type,before_modification,after_modification,modification_time) VALUES "
                 f"('{self.eid}', '{modifier.id}', '{key.upper()}', '{before}', '{after}', '{t}')"
             )
@@ -115,16 +115,16 @@ class Person:
             upd_cmd.append(
                 f" WHERE server_id='{modifier.guild.id}' AND entry_id='{self.eid}'"
             )
-            db.db_executor(''.join(upd_cmd))
+            await db.execute(''.join(upd_cmd))
 
         return upd
 
-    def delete(self) -> None:
-        db.db_executor(
+    async def delete(self) -> None:
+        await db.execute(
             "DELETE FROM YMCA_GREEN_BOOK_ENTRIES WHERE "
             f"entry_id='{self.eid}'"
         )
-        db.db_executor(
+        await db.execute(
             "DELETE FROM YMCA_GREEN_BOOK_HISTORY WHERE "
             f"entry_id='{self.eid}'"
         )
@@ -147,8 +147,8 @@ class Person:
     def wristband_emoji(self): return self.__emojis[self.wristband]
 
     @property
-    def history(self) -> list:
-        val = db.db_executor(
+    async def history(self) -> list:
+        val = await db.execute(
             "SELECT * FROM YMCA_GREEN_BOOK_HISTORY WHERE "
             f"entry_id='{self.eid}' "
             "ORDER BY modification_time DESC LIMIT 10"
@@ -181,8 +181,8 @@ class GreenBook:
         self.u = u
 
     @property
-    def total_entries(self) -> int:
-        val = db.db_executor(
+    async def total_entries(self) -> int:
+        val = await db.execute(
             "SELECT COUNT(*) FROM YMCA_GREEN_BOOK_ENTRIES WHERE "
             f"server_id='{self.u.guild.id}'"
         )
@@ -190,8 +190,8 @@ class GreenBook:
         return int(val)
 
     @property
-    def recent_entries(self) -> list:
-        val = db.db_executor(
+    async def recent_entries(self) -> list:
+        val = await db.execute(
             "SELECT * FROM YMCA_GREEN_BOOK_ENTRIES WHERE "
             f"server_id='{self.u.guild.id}' "
             f"ORDER BY pass_time DESC LIMIT {tunables('GREEN_BOOK_RECENT_ENTRIES_LIMIT')}"
@@ -214,7 +214,7 @@ class GreenBook:
 
 
     # Handle full names; currently only does first OR last
-    def search(self, query: str) -> list:
+    async def search(self, query: str) -> list:
 
         if ' ' in query:
             query = query.split(' ')
@@ -229,7 +229,7 @@ class GreenBook:
 
         val = None
         if len(query) > 1:
-            val = db.db_executor(
+            val = await db.execute(
                 "SELECT * FROM YMCA_GREEN_BOOK_ENTRIES WHERE "
                 f"server_id='{self.u.guild.id}' AND "
                 f"first_name='{query[0]}' AND "
@@ -238,7 +238,7 @@ class GreenBook:
             )
 
         if val == [] or val is None:
-            val = db.db_executor(
+            val = await db.execute(
                 "SELECT * FROM YMCA_GREEN_BOOK_ENTRIES WHERE "
                 f"server_id='{self.u.guild.id}' AND "
                 f"(first_name LIKE '%{query[0]}%' OR "
@@ -264,14 +264,16 @@ class GreenBook:
             )
         return plist
     
-    def create(self, first: str, last: str, age: int, wristband: str) -> Person:
-        val = db.db_executor(
+    async def create(self, first: str, last: str, age: int, wristband: str) -> Person:
+
+        val = await db.execute(
             "SELECT * FROM YMCA_GREEN_BOOK_ENTRIES WHERE "
             f"server_id='{self.u.guild.id}' AND "
             f"first_name='{first.upper()}' AND "
             f"last_name='{last.upper()}' AND "
             f"age='{age}'"
         )
+
         # This line could cause issues in the future.
         if val != [] and val is not None:
             return Person(
@@ -283,20 +285,20 @@ class GreenBook:
                 pass_time=val[0][6],
                 wristband=val[0][7]
         )
-
         # EID generation
         eid = None
         while True:
             eid = uuid.uuid4().hex
-            val = db.db_executor(f"SELECT * FROM YMCA_GREEN_BOOK_ENTRIES WHERE entry_id='{eid}'")
+            val = await db.execute(f"SELECT * FROM YMCA_GREEN_BOOK_ENTRIES WHERE entry_id='{eid}'")
             if val == []: break
 
         pass_time = int(time.time())
-        db.db_executor(
+        await db.execute(
             "INSERT INTO YMCA_GREEN_BOOK_ENTRIES (server_id,user_id,entry_id,first_name,last_name,age,pass_time,wristband_color) VALUES "
             f"('{self.u.guild.id}', '{self.u.user.id}', '{eid}', '{first.upper()}', '{last.upper()}', '{age}', '{pass_time}', '{wristband}')"
         )
-        return Person(
+
+        rp = Person(
             creator_id=self.u.user.id,
             eid=eid,
             first=first.upper(),
@@ -306,3 +308,17 @@ class GreenBook:
             wristband=wristband,
             new=True
         )
+
+        try:
+            ch = await self.u.ymca_green_book_channel
+            if ch is not None:
+                await ch.send(
+                    content=(
+                        f"{self.u.user.mention} added `{rp.last}`, `{rp.first}`『`Age {rp.age}`』to the book "
+                        f"as a {rp.wristband_emoji} `{rp.wristband}` band."
+                    ),
+                    allowed_mentions=discord.AllowedMentions(users=False)
+                )
+        except: pass
+
+        return rp

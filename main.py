@@ -1,6 +1,5 @@
-# The Boys Hangout Homie Helper Bot
-
-
+# Miko Bot main file
+from Database.database_class import connect_pool
 from tunables import fetch_tunables, tunables, GLOBAL_EMBED_COLOR
 fetch_tunables()
 
@@ -264,6 +263,7 @@ async def on_message(message: discord.Message):
         await client.process_commands(message)
         return
     else: await client.process_commands(message)
+
     
     if message.content.lower().startswith(f"{os.getenv('CMD_PREFIX1')}rt") and mm.user.bot_permission_level >= 5:
         await message.channel.send("Fetching tunables from database...")
@@ -369,6 +369,7 @@ async def load_extensions_console():
 
 async def main():
     print('bot online')
+    asyncio.create_task(connect_pool())
     asyncio.create_task(heartbeat())
     async with client:
         await load_extensions()

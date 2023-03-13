@@ -4,7 +4,7 @@ import re
 import time
 import discord
 from Music.LavalinkClient import AUDIO_SESSIONS
-from Database.database_class import Database
+from Database.database_class import Database, AsyncDatabase
 from Leveling.LevelClass import LevelClass
 # from Pets.PetClass import PetOwner
 from Tokens.TokenClass import Token
@@ -13,7 +13,8 @@ from misc.embeds import help_embed
 from misc.holiday_roles import get_holiday
 from misc.misc import generate_nickname, react_all_emoji_list, today
 from tunables import *
-go = Database("GuildObjects.py")
+go = Database("Database.GuildObjects.py")
+ago = AsyncDatabase("Database.GuildObjects.py")
 
 class MikoGuild():
 
@@ -136,13 +137,13 @@ class MikoGuild():
         )
         return [item[0] for item in val] if type(val) is list else [val]
     @property
-    def ymca_green_book_channel(self) -> discord.TextChannel:
-        val = go.db_executor(
+    async def ymca_green_book_channel(self) -> discord.TextChannel:
+        val = await ago.execute(
             "SELECT ymca_green_book_channel FROM SERVERS WHERE "
             f"server_id='{self.guild.id}'"
         )
         if val == [] or val is None: return None
-        return self.client.get_channel(int(val))
+        return self.guild.get_channel(int(val))
 
     def set_member_numbers(self) -> None:
         member_ids = go.db_executor(

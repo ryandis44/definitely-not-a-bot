@@ -12,13 +12,13 @@ from Voice.track_voice import avg_voicetime_result, get_average_voice_session, g
 from misc.embeds import modified_playtime_embed
 from Playtime.playtime import avg_playtime_result, get_app_from_str, get_average_session, get_total_activity_updates, get_total_playtime_user, playtime_embed, total_playtime_result
 from tunables import *
-from Database.database_class import Database
+from Database.database_class import Database, AsyncDatabase
 import re
 import os
 from dotenv import load_dotenv
 load_dotenv()
 
-app_cmd_db = Database("PlaytimeCog.py")
+app_cmd_db = AsyncDatabase("PlaytimeCog.py")
         
 
 class PlaytimeCog(commands.Cog):
@@ -246,7 +246,7 @@ class PlaytimeCog(commands.Cog):
         sel_cmd.append(query_limit)
 
         try:
-            playtime_by_game = app_cmd_db.db_executor(''.join(sel_cmd))
+            playtime_by_game = await app_cmd_db.execute(''.join(sel_cmd))
 
             if playtime_by_game == []:
                 msg = []
